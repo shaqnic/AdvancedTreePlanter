@@ -5,8 +5,8 @@ using Oxide.Core.Plugins;
 
 namespace Oxide.Plugins
 {
-    [Info("Tree Planter", "Bazz3l", "1.1.2")]
-    [Description("Buy and plant trees in building authed areas using in-game currency.")]
+    [Info("Advanced Tree Planter", "shaqnic", "1.0.0")]
+    [Description("Allow planting specific and protected trees. Adaption of Bazz3l's \"Tree Planter\" plugin.")]
     class TreePlanter : RustPlugin
     {
         [PluginReference]
