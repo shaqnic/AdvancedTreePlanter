@@ -1,134 +1,307 @@
+﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using UnityEngine;
-using Oxide.Core.Plugins;
 
 namespace Oxide.Plugins
 {
-    [Info("Advanced Tree Planter", "shaqnic", "1.0.0")]
+    [Info("Advanced Tree Planter", "shaqnic", "1.1.3")]
     [Description("Allow planting specific and protected trees. Adaption of Bazz3l's \"Tree Planter\" plugin.")]
-    class TreePlanter : RustPlugin
+    /*
+     * Adaption of Bazz3l's "Tree Planter" plugin (https://umod.org/plugins/tree-planter)
+     * Extended features:
+     * - ability to plant any type of tree
+     * - configure whether building permissions are required
+     * - configure whether protected trees can be planted (require permission to chop)
+     */
+    public class AdvancedTreePlanter : RustPlugin
     {
-        [PluginReference]
-        Plugin ServerRewards, Economics;
-
         #region Fields
-        const string _permUse = "treeplanter.use";
-        ConfigData _config;
+
+        private const string PermUse = "advancedtreeplanter.use";
+        private const string PermChop = "advancedtreeplanter.chop";
+        private ConfigData _config;
+
         #endregion
 
+
         #region Config
-        ConfigData GetDefaultConfig()
+
+        private ConfigData GetDefaultConfig()
         {
-            return new ConfigData {
-                UseServerRewards = true,
-                UseEconomics = false,
-                UseCurrency = false,
-                OwnerOnly = false,
-                CurrencyItemID = -932201673,
-                Items = new List<TreeConfig> {
-                    new TreeConfig("oak", new List<string> {
-                        "assets/bundled/prefabs/autospawn/resource/v2_temp_field_large/oak_a.prefab",
-                        "assets/bundled/prefabs/autospawn/resource/v2_temp_field_large/oak_b.prefab",
-                        "assets/bundled/prefabs/autospawn/resource/v2_temp_field_large/oak_c.prefab"
-                    }),
-                    new TreeConfig("birch", new List<string> {
-                        "assets/bundled/prefabs/autospawn/resource/v2_temp_forest/birch_small_temp.prefab",
+            return new ConfigData
+            {
+                RequireBuildPermission = true,
+                AllowProtectedTrees = true,
+                Trees = new List<TreeConfig>
+                {
+                    /* TEMPERATE ENVIRONMENT */
+                    new TreeConfig("Birch", "Big",
+                        "assets/bundled/prefabs/autospawn/resource/v2_temp_forest/birch_big_temp.prefab", "Temperate"),
+                    new TreeConfig("Birch", "Large",
+                        "assets/bundled/prefabs/autospawn/resource/v2_temp_forest/birch_large_temp.prefab",
+                        "Temperate"),
+                    new TreeConfig("Birch", "Medium",
                         "assets/bundled/prefabs/autospawn/resource/v2_temp_forest/birch_medium_temp.prefab",
-                        "assets/bundled/prefabs/autospawn/resource/v2_temp_forest/birch_large_temp.prefab"
-                    }),
-                    new TreeConfig("douglas", new List<string> {
+                        "Temperate"),
+                    new TreeConfig("Birch", "Small",
+                        "assets/bundled/prefabs/autospawn/resource/v2_temp_forest/birch_small_temp.prefab",
+                        "Temperate"),
+                    new TreeConfig("Birch", "Tiny",
+                        "assets/bundled/prefabs/autospawn/resource/v2_temp_forest/birch_tiny_temp.prefab", "Temperate"),
+                    new TreeConfig("Douglas", "A",
+                        "assets/bundled/prefabs/autospawn/resource/v2_temp_forest/douglas_fir_a.prefab", "Temperate"),
+                    new TreeConfig("Douglas", "B",
+                        "assets/bundled/prefabs/autospawn/resource/v2_temp_forest/douglas_fir_b.prefab", "Temperate"),
+                    new TreeConfig("Douglas", "C",
+                        "assets/bundled/prefabs/autospawn/resource/v2_temp_forest/douglas_fir_c.prefab", "Temperate"),
+                    new TreeConfig("Douglas", "D",
+                        "assets/bundled/prefabs/autospawn/resource/v2_temp_forest_small/douglas_fir_d.prefab",
+                        "Temperate"),
+                    new TreeConfig("Pine", "A",
+                        "assets/bundled/prefabs/autospawn/resource/v2_temp_forest/pine_a.prefab", "Temperate"),
+                    new TreeConfig("Pine", "B",
+                        "assets/bundled/prefabs/autospawn/resource/v2_temp_forest/pine_b.prefab", "Temperate"),
+                    new TreeConfig("Pine", "C",
+                        "assets/bundled/prefabs/autospawn/resource/v2_temp_forest/pine_c.prefab", "Temperate"),
+                    new TreeConfig("Pine", "D",
+                        "assets/bundled/prefabs/autospawn/resource/v2_temp_forest_small/pine_d.prefab", "Temperate"),
+                    new TreeConfig("Beech", "A",
+                        "assets/bundled/prefabs/autospawn/resource/v2_temp_forest_deciduous_large/american_beech_a.prefab",
+                        "Temperate"),
+                    new TreeConfig("Beech", "B",
+                        "assets/bundled/prefabs/autospawn/resource/v2_temp_forest_deciduous_large/american_beech_b.prefab",
+                        "Temperate"),
+                    new TreeConfig("Beech", "C",
+                        "assets/bundled/prefabs/autospawn/resource/v2_temp_forest_deciduous_large/american_beech_c.prefab",
+                        "Temperate"),
+                    new TreeConfig("Beech", "D",
+                        "assets/bundled/prefabs/autospawn/resource/v2_temp_forest_deciduous_small/american_beech_d.prefab",
+                        "Temperate"),
+                    new TreeConfig("Beech", "E",
+                        "assets/bundled/prefabs/autospawn/resource/v2_temp_forest_deciduous_small/american_beech_e.prefab",
+                        "Temperate"),
+                    new TreeConfig("Oak", "A",
+                        "assets/bundled/prefabs/autospawn/resource/v2_temp_field_large/oak_a.prefab", "Temperate"),
+                    new TreeConfig("Oak", "B",
+                        "assets/bundled/prefabs/autospawn/resource/v2_temp_field_large/oak_b.prefab", "Temperate"),
+                    new TreeConfig("Oak", "C",
+                        "assets/bundled/prefabs/autospawn/resource/v2_temp_field_large/oak_c.prefab", "Temperate"),
+                    new TreeConfig("Oak", "D",
+                        "assets/bundled/prefabs/autospawn/resource/v2_temp_field_large/oak_d.prefab", "Temperate"),
+                    new TreeConfig("Oak", "E",
+                        "assets/bundled/prefabs/autospawn/resource/v2_temp_field_small/oak_e.prefab", "Temperate"),
+                    new TreeConfig("Oak", "F",
+                        "assets/bundled/prefabs/autospawn/resource/v2_temp_field_small/oak_f.prefab", "Temperate"),
+                    new TreeConfig("Beech", "A-dead",
+                        "assets/bundled/prefabs/autospawn/resource/v2_temp_forest_deciduous_large/american_beech_a_dead.prefab",
+                        "Temperate"),
+                    new TreeConfig("Beech", "D-dead",
+                        "assets/bundled/prefabs/autospawn/resource/v2_tundra_field/american_beech_d_dead.prefab",
+                        "Temperate"),
+                    new TreeConfig("Beech", "E-dead",
+                        "assets/bundled/prefabs/autospawn/resource/v2_temp_forest_deciduous_small/american_beech_e_dead.prefab",
+                        "Temperate"),
+                    /* ARCTIC ENVIRONMENT */
+                    new TreeConfig("Douglas", "A",
                         "assets/bundled/prefabs/autospawn/resource/v2_arctic_forest/douglas_fir_a_snow.prefab",
+                        "Arctic"),
+                    new TreeConfig("Douglas", "B",
                         "assets/bundled/prefabs/autospawn/resource/v2_arctic_forest/douglas_fir_b_snow.prefab",
-                        "assets/bundled/prefabs/autospawn/resource/v2_arctic_forest/douglas_fir_c_snow.prefab"
-                    }),
-                    new TreeConfig("swamp", new List<string> {
-                        "assets/bundled/prefabs/autospawn/resource/swamp-trees/swamp_tree_a.prefab",
-                        "assets/bundled/prefabs/autospawn/resource/swamp-trees/swamp_tree_b.prefab",
-                        "assets/bundled/prefabs/autospawn/resource/swamp-trees/swamp_tree_c.prefab"
-                    }),
-                    new TreeConfig("palm", new List<string> {
-                        "assets/bundled/prefabs/autospawn/resource/v2_arid_forest/palm_tree_small_c_entity.prefab",
+                        "Arctic"),
+                    new TreeConfig("Douglas", "C",
+                        "assets/bundled/prefabs/autospawn/resource/v2_arctic_forest/douglas_fir_c_snow.prefab",
+                        "Arctic"),
+                    new TreeConfig("Pine", "A",
+                        "assets/bundled/prefabs/autospawn/resource/v2_arctic_forest_snow/pine_a_snow.prefab", "Arctic"),
+                    new TreeConfig("Pine", "B",
+                        "assets/bundled/prefabs/autospawn/resource/v2_arctic_forest_snow/pine_b snow.prefab", "Arctic"),
+                    new TreeConfig("Pine", "C",
+                        "assets/bundled/prefabs/autospawn/resource/v2_arctic_forest_snow/pine_c_snow.prefab", "Arctic"),
+                    new TreeConfig("Pine", "D",
+                        "assets/bundled/prefabs/autospawn/resource/v2_arctic_forest_snow/pine_d_snow.prefab", "Arctic"),
+                    /* TUNDRA ENVIRONMENT */
+                    new TreeConfig("Birch", "Big",
+                        "assets/bundled/prefabs/autospawn/resource/v2_tundra_forest/birch_big_tundra.prefab", "Tundra"),
+                    new TreeConfig("Birch", "Large",
+                        "assets/bundled/prefabs/autospawn/resource/v2_tundra_forest/birch_large_tundra.prefab",
+                        "Tundra"),
+                    new TreeConfig("Birch", "Medium",
+                        "assets/bundled/prefabs/autospawn/resource/v2_tundra_forest/birch_medium_tundra.prefab",
+                        "Tundra"),
+                    new TreeConfig("Birch", "Small",
+                        "assets/bundled/prefabs/autospawn/resource/v2_tundra_forest/birch_small_tundra.prefab",
+                        "Tundra"),
+                    new TreeConfig("Birch", "Tiny",
+                        "assets/bundled/prefabs/autospawn/resource/v2_tundra_forest/birch_tiny_tundra.prefab",
+                        "Tundra"),
+                    new TreeConfig("Oak", "A",
+                        "assets/bundled/prefabs/autospawn/resource/v2_tundra_forest/oak_a_tundra.prefab", "Tundra"),
+                    new TreeConfig("Oak", "B",
+                        "assets/bundled/prefabs/autospawn/resource/v2_tundra_forest/oak_b_tundra.prefab", "Tundra"),
+                    new TreeConfig("Oak", "F",
+                        "assets/bundled/prefabs/autospawn/resource/v2_tundra_forest_small/oak_f_tundra.prefab",
+                        "Tundra"),
+                    /* SWAMP ENVIRONMENT */
+                    new TreeConfig("Tree", "A",
+                        "assets/bundled/prefabs/autospawn/resource/swamp-trees/swamp_tree_a.prefab", "Swamp"),
+                    new TreeConfig("Tree", "B",
+                        "assets/bundled/prefabs/autospawn/resource/swamp-trees/swamp_tree_b.prefab", "Swamp"),
+                    new TreeConfig("Tree", "C",
+                        "assets/bundled/prefabs/autospawn/resource/swamp-trees/swamp_tree_c.prefab", "Swamp"),
+                    new TreeConfig("Tree", "D",
+                        "assets/bundled/prefabs/autospawn/resource/swamp-trees/swamp_tree_d.prefab", "Swamp"),
+                    new TreeConfig("Tree", "E",
+                        "assets/bundled/prefabs/autospawn/resource/swamp-trees/swamp_tree_e.prefab", "Swamp"),
+                    new TreeConfig("Tree", "F",
+                        "assets/bundled/prefabs/autospawn/resource/swamp-trees/swamp_tree_f.prefab", "Swamp"),
+                    /* ARID ENVIRONMENT */
+                    new TreeConfig("Palm", "Med-a",
                         "assets/bundled/prefabs/autospawn/resource/v2_arid_forest/palm_tree_med_a_entity.prefab",
-                        "assets/bundled/prefabs/autospawn/resource/v2_arid_forest/palm_tree_tall_a_entity.prefab"
-                    }),
-                    new TreeConfig("pine", new List<string> {
-                        "assets/bundled/prefabs/autospawn/resource/v2_arctic_forest_snow/pine_a_snow.prefab",
-                        "assets/bundled/prefabs/autospawn/resource/v2_arctic_forest_snow/pine_b snow.prefab",
-                        "assets/bundled/prefabs/autospawn/resource/v2_arctic_forest_snow/pine_c_snow.prefab"
-                    })
+                        "Arid"),
+                    new TreeConfig("Palm", "Med-b",
+                        "assets/bundled/prefabs/autospawn/resource/v2_arid_forest/palm_tree_med_b_entity.prefab",
+                        "Arid"),
+                    new TreeConfig("Palm", "Small-a",
+                        "assets/bundled/prefabs/autospawn/resource/v2_arid_forest/palm_tree_small_a_entity.prefab",
+                        "Arid"),
+                    new TreeConfig("Palm", "Small-b",
+                        "assets/bundled/prefabs/autospawn/resource/v2_arid_forest/palm_tree_small_b_entity.prefab",
+                        "Arid"),
+                    new TreeConfig("Palm", "Small-c",
+                        "assets/bundled/prefabs/autospawn/resource/v2_arid_forest/palm_tree_small_c_entity.prefab",
+                        "Arid"),
+                    new TreeConfig("Palm", "Tall-a",
+                        "assets/bundled/prefabs/autospawn/resource/v2_arid_forest/palm_tree_tall_a_entity.prefab",
+                        "Arid"),
+                    new TreeConfig("Palm", "Tall-b",
+                        "assets/bundled/prefabs/autospawn/resource/v2_arid_forest/palm_tree_tall_b_entity.prefab",
+                        "Arid"),
+                    new TreeConfig("Cactus", "1",
+                        "assets/bundled/prefabs/autospawn/resource/v2_arid_cactus/cactus-1.prefab", "Arid"),
+                    new TreeConfig("Cactus", "2",
+                        "assets/bundled/prefabs/autospawn/resource/v2_arid_cactus/cactus-2.prefab", "Arid"),
+                    new TreeConfig("Cactus", "3",
+                        "assets/bundled/prefabs/autospawn/resource/v2_arid_cactus/cactus-3.prefab", "Arid"),
+                    new TreeConfig("Cactus", "4",
+                        "assets/bundled/prefabs/autospawn/resource/v2_arid_cactus/cactus-4.prefab", "Arid"),
+                    new TreeConfig("Cactus", "5",
+                        "assets/bundled/prefabs/autospawn/resource/v2_arid_cactus/cactus-5.prefab", "Arid"),
+                    new TreeConfig("Cactus", "6",
+                        "assets/bundled/prefabs/autospawn/resource/v2_arid_cactus/cactus-6.prefab", "Arid"),
+                    new TreeConfig("Cactus", "7",
+                        "assets/bundled/prefabs/autospawn/resource/v2_arid_cactus/cactus-7.prefab", "Arid")
                 }
             };
         }
 
-        class ConfigData
+        public class ConfigData
         {
-            public bool UseServerRewards;
-            public bool UseEconomics;
-            public bool UseCurrency;
-            public bool OwnerOnly;
-            public int CurrencyItemID;
-            public List<TreeConfig> Items;
+            public bool AllowProtectedTrees;
+            public bool RequireBuildPermission;
+            public List<TreeConfig> Trees;
 
-            public TreeConfig FindItemByName(string name) => Items.Find(x => x.Name == name);
+            //public TreeConfig FindItemByName(string type, string variant, string env)
+            //{
+            //    return Trees.Find(x =>
+            //        string.Equals(x.Type, type, StringComparison.CurrentCultureIgnoreCase) &&
+            //        string.Equals(x.Variant, variant, StringComparison.CurrentCultureIgnoreCase) &&
+            //        string.Equals(x.Env, env, StringComparison.CurrentCultureIgnoreCase));
+            //}
         }
 
-        class TreeConfig
+        public class TreeConfig
         {
-            public string Name;
-            public int Cost = 10;
-            public int Amount = 1;
-            public List<string> Prefabs;
+            public string Env;
+            public int PlantCost;
+            public string Prefab;
+            public int ProtCost;
+            public string Type;
+            public string Variant;
 
-            public TreeConfig(string name, List<string> prefabs)
+            public TreeConfig(string type, string variant, string prefab, string env, int plantCost = 10,
+                int protCost = 20)
             {
-                Name = name;
-                Prefabs = prefabs;
+                Type = type;
+                Variant = variant;
+                Prefab = prefab;
+                Env = env;
+                PlantCost = plantCost;
+                ProtCost = protCost;
             }
         }
+
         #endregion
 
+
         #region Oxide
-        protected override void LoadDefaultConfig() => Config.WriteObject(GetDefaultConfig(), true);
+
+        protected override void LoadDefaultConfig()
+        {
+            Config.WriteObject(GetDefaultConfig(), true);
+        }
 
         protected override void LoadDefaultMessages()
         {
-            lang.RegisterMessages(new Dictionary<string, string> {
-                {"Prefix", "<color=#DC143C>Tree Planter</color>:"},
-                {"NoPermission", "No permission"},
-                {"Balance", "You do not have enough for that."},
+            lang.RegisterMessages(new Dictionary<string, string>
+            {
+                {"NoPermission", "No permission."},
+                {"Balance", "You cannot afford this ({0} Scrap required)."},
+                {"Given", "You received a sapling for '{0}'."},
+                {"MissingAuth", "You must have building privilege."},
+                {"Planter", "Cannot be placed in a planter."},
                 {"Planted", "You planted a tree."},
-                {"Authed", "You must have build privlage."},
-                {"Planter", "Can not be placed in a planter."},
-                {"Given", "You received {0} ({1})."},
-                {"Cost", "\n{0}, cost {1}."},
                 {"Error", "Something went wrong."},
                 {"Invalid", "Invalid type."},
+                {"CmdTree", "Get saplings for tree type:"},
+                {"CmdTreeProt", "Get saplings for tree type (protected from chopping):"},
+                {"CmdTreeList", "List of trees for selected environment:"},
+                {"EnvList", "List of available environments:"},
+                {"EnvTreeList", "List of trees for environment '{0}':"},
+                {"EnvNotFound", "Environment '{0}' is not available."},
+                {"VariantMissing", "No variant for this tree type was chosen."},
+                {"VarList", "List of available variants."},
+                {"InvalidTree", "Tree type '{0}' is not valid for environment '{1}'."},
+                {"InvalidVariant", "Tree variant '{0}' is not valid for tree '{1}' and environment '{2}'."},
+                {"InvalidAmount", "Amount must be a number greater than 0."},
+                {"GetSapling", "You get {0}x sapling of '{1}'."},
+                {"ProtectedTree", "This tree seems to be protected."}
             }, this);
         }
 
-        void OnServerInitialized()
+        private void OnServerInitialized()
         {
-            permission.RegisterPermission(_permUse, this);
+            permission.RegisterPermission(PermUse, this);
+            permission.RegisterPermission(PermChop, this);
         }
 
-        void Init()
+        private void Init()
         {
             _config = Config.ReadObject<ConfigData>();
         }
 
-        object OnMeleeAttack(BasePlayer player, HitInfo info)
+        private object OnMeleeAttack(BasePlayer player, HitInfo info)
         {
-            BaseEntity ent = info?.HitEntity;
+            var ent = info?.HitEntity;
 
-            if (ent == null || ent.OwnerID == 0UL || !IsTree(ent.ShortPrefabName))
-            {
-                return null;
-            }
+            if (ent == null || !IsTree(ent.ShortPrefabName)) return null;
 
-            if (_config.OwnerOnly && !IsOwner(player.userID, ent.OwnerID))
+            var debugger = new StringBuilder();
+            debugger.Append("ent.OwnerID: " + ent.OwnerID);
+            debugger.Append("\n_config.AllowProtectedTrees: " + _config.AllowProtectedTrees);
+            debugger.Append("\nent.OwnerID != 0UL: " + (ent.OwnerID != 0UL));
+            debugger.Append("\n!permission.UserHasPermission(player.UserIDString, PermChop): " +
+                            !permission.UserHasPermission(player.UserIDString, PermChop));
+            player.ChatMessage(debugger.ToString());
+
+            if (_config.AllowProtectedTrees && ent.OwnerID != 0UL &&
+                !permission.UserHasPermission(player.UserIDString, PermChop))
             {
                 info.damageTypes.ScaleAll(0.0f);
+
+                player.ChatMessage(Lang("ProtectedTree", player.UserIDString));
 
                 return false;
             }
@@ -136,119 +309,215 @@ namespace Oxide.Plugins
             return null;
         }
 
-        void OnEntityBuilt(Planner plan, GameObject seed)
+        private void OnEntityBuilt(Planner plan, GameObject seed)
         {
-            BasePlayer player = plan.GetOwnerPlayer();
-            if (player == null || !permission.UserHasPermission(player.UserIDString, _permUse))
-            {
-                return;
-            }
+            var player = plan.GetOwnerPlayer();
+            if (player == null || !permission.UserHasPermission(player.UserIDString, PermUse)) return;
 
-            GrowableEntity plant = seed.GetComponent<GrowableEntity>();
-            if (plant == null)
-            {
-                return;
-            }
+            var plant = seed.GetComponent<GrowableEntity>();
+            if (plant == null) return;
 
-            Item item = player.GetActiveItem();
-            if (item == null)
-            {
-                return;
-            }
+            var item = player.GetActiveItem();
+            if (item == null) return;
 
-            TreeConfig tree = _config.FindItemByName(item.name);
-            if (tree == null)
-            {
-                return;
-            }
+            var pattern = @"([a-zA-Z]*)\s([a-zA-Z]*),\sVariant\s([a-zA-Z0-9\-]*)";
+            var attributes = Regex.Match(item.name, pattern).Groups;
 
-            NextTick(() => {
+            var tree = _config.Trees.FirstOrDefault(tre =>
+                tre.Env == attributes[1].Value && tre.Type == attributes[2].Value &&
+                tre.Variant == attributes[3].Value);
+            if (tree == null) return;
+
+            var prot = item.name.Contains("protected") ? true : false;
+
+            NextTick(() =>
+            {
                 if (plant.GetParentEntity() is PlanterBox)
                 {
                     RefundItem(player, item.name);
 
-                    plant?.Kill(BaseNetworkable.DestroyMode.None);
+                    plant?.Kill();
 
                     player.ChatMessage(Lang("Planter", player.UserIDString));
                     return;
                 }
 
-                if (!player.IsBuildingAuthed())
+                if (_config.RequireBuildPermission && !player.IsBuildingAuthed())
                 {
                     RefundItem(player, item.name);
 
-                    plant?.Kill(BaseNetworkable.DestroyMode.None);
+                    plant?.Kill();
 
-                    player.ChatMessage(Lang("Authed", player.UserIDString));
+                    player.ChatMessage(Lang("MissingAuth", player.UserIDString));
                     return;
                 }
 
-                PlantTree(player, plant, tree.Prefabs.GetRandom());
+                PlantTree(player, plant, tree.Prefab, prot);
             });
         }
 
         [ChatCommand("tree")]
-        void BuyCommand(BasePlayer player, string cmd, string[] args)
+        private void TreeCommand(BasePlayer player, string cmd, string[] args)
         {
-            if (!permission.UserHasPermission(player.UserIDString, _permUse))
+            if (!permission.UserHasPermission(player.UserIDString, PermUse))
             {
                 player.ChatMessage(Lang("NoPermission", player.UserIDString));
                 return;
             }
 
-            if (args.Length != 1)
+            var sb = new StringBuilder();
+            sb.Append("<color=#6699ff>Advanced Tree Planter</color>\n\n");
+
+            if (args.Length == 0 || args.Length > 5)
             {
-                StringBuilder sb = new StringBuilder();
-
-                sb.Append(Lang("Prefix", player.UserIDString));
-
-                foreach (TreeConfig tc in _config.Items)
-                {
-                    sb.Append(Lang("Cost", player.UserIDString, tc.Name, tc.Cost));
-                }
+                sb.Append("<color=#66ff99>" + Lang("CmdTree", player.UserIDString) + "</color>\n");
+                sb.Append("/tree <environment> <tree> <variant> <color=#cccccc><amount></color>\n\n");
+                sb.Append("<color=#66ff99>" + Lang("CmdTreeProt", player.UserIDString) + "</color>\n");
+                sb.Append("/tree <environment> <tree> <variant> <amount> prot\n\n");
+                sb.Append("<color=#66ff99>" + Lang("CmdTreeList", player.UserIDString) + "</color>\n");
+                sb.Append("/tree <environment>\n\n");
+                sb.Append("<color=#66ff99>" + Lang("EnvList", player.UserIDString) + "</color>\n");
+                sb.Append(string.Join(", ", GetAvailableEnvironments()));
 
                 player.ChatMessage(sb.ToString());
                 return;
             }
 
-            TreeConfig tree = _config.FindItemByName(string.Join(" ", args));
-            if (tree == null)
+            var environment = GetAvailableEnvironments().FirstOrDefault(env =>
+                string.Equals(env, args[0], StringComparison.InvariantCultureIgnoreCase));
+            if (environment == null)
             {
-                player.ChatMessage(Lang("Invalid", player.UserIDString));
+                sb.Append($"/tree <color=#ff3333>{args[0]}</color>\n\n");
+                sb.Append("<color=#ff3333>" + Lang("EnvNotFound", player.UserIDString, args[0]) + "</color>");
+
+                player.ChatMessage(sb.ToString());
                 return;
             }
 
-            if (!CheckBalance(player, tree.Cost))
+            if (args.Length == 1)
             {
-                player.ChatMessage(Lang("Balance", player.UserIDString));
-                return;
-            }
+                sb.Append($"/tree {environment} <tree> <variant> <color=#cccccc><amount></color>\n\n");
+                sb.Append("<color=#66ff99>" + Lang("EnvTreeList", player.UserIDString, environment) + "</color>\n");
+                sb.Append(string.Join(", ", GetTreeNamesFromArray(GetTreesForEnvironment(environment))));
 
-            Item item = CreateItem(tree.Name, tree.Amount);
-            if (item == null)
+                player.ChatMessage(sb.ToString());
+            }
+            else
             {
-                player.ChatMessage(Lang("Error", player.UserIDString));
-                return;
+                if (!IsValidTree(args[0], args[1]))
+                {
+                    var args2 = args.Length > 2 ? args[2] : "<variant>";
+                    var args3 = args.Length > 3 ? args[3] : "<amount>";
+                    sb.Append(
+                        $"/tree {args[0]} <color=#ff3333>{args[1]}</color> {args2} <color=#cccccc>{args3}</color>\n\n");
+                    sb.Append($"<color=#ff3333>{Lang("InvalidTree", player.UserIDString, args[1], args[0])}</color>");
+                    player.ChatMessage(sb.ToString());
+                    return;
+                }
+
+                var treeVariants = GetTreeVariantsFromArray(GetTreesForEnvironment(environment).Where(tree =>
+                    string.Equals(tree.Type, args[1], StringComparison.InvariantCultureIgnoreCase)).ToArray());
+
+                if (args.Length == 2)
+                {
+                    sb.Append(
+                        $"/tree {args[0]} {args[1]} <color=#ff3333><variant></color> <color=#cccccc><amount></color>\n\n");
+                    sb.Append($"<color=#ff3333>{Lang("VariantMissing", player.UserIDString)}</color>\n\n");
+                    sb.Append($"<color=#66ff99>{Lang("AvailableVariants", player.UserIDString)}:</color>\n");
+                    sb.Append(string.Join(", ", treeVariants));
+
+                    player.ChatMessage(sb.ToString());
+                }
+                else
+                {
+                    if (!IsValidVariant(args[0], args[1], args[2]))
+                    {
+                        var args3 = args.Length > 3 ? args[3] : "<amount>";
+                        sb.Append(
+                            $"/tree {args[0]} {args[1]} <color=#ff3333>{args[2]}</color> <color=#cccccc>{args3}</color>\n\n");
+                        sb.Append(
+                            $"<color=#ff3333>{Lang("InvalidVariant", player.UserIDString, args[2], args[1], args[0])}</color>\n\n");
+                        sb.Append($"<color=#66ff99>{Lang("AvailableVariants", player.UserIDString)}:</color>\n");
+                        sb.Append(string.Join(", ", treeVariants));
+                        player.ChatMessage(sb.ToString());
+                        return;
+                    }
+
+                    var amount = 1;
+                    if (args.Length > 3)
+                    {
+                        var isNumeric = int.TryParse(args[3], out amount);
+                        if (!isNumeric || amount < 1)
+                        {
+                            sb.Append($"/tree {args[0]} {args[1]} {args[2]} <color=#ff3333>{args[3]}</color>\n\n");
+                            sb.Append($"<color=#ff3333>{Lang("InvalidAmount", player.UserIDString)}</color>");
+
+                            player.ChatMessage(sb.ToString());
+                            return;
+                        }
+                    }
+
+                    var prot = false;
+                    if (args.Length > 4)
+                        prot = args[4].ToLower() == "prot" ? true : false;
+
+                    var nameBuilder = new StringBuilder();
+                    nameBuilder.Append(
+                        $"{UniFormat(args[0])} {UniFormat(args[1])}, Variant {UniFormat(args[2])}");
+                    if (prot)
+                        nameBuilder.Append(" (protected)");
+                    var saplingName = nameBuilder.ToString();
+
+                    var tree = _config.Trees.FirstOrDefault(tre =>
+                        string.Equals(tre.Env, args[0], StringComparison.InvariantCultureIgnoreCase) &&
+                        string.Equals(tre.Type, args[1], StringComparison.InvariantCultureIgnoreCase) &&
+                        string.Equals(tre.Variant, args[2], StringComparison.InvariantCultureIgnoreCase));
+
+                    if (tree == null)
+                    {
+                        player.ChatMessage(Lang("Invalid", player.UserIDString));
+                        return;
+                    }
+
+                    var cost = tree.PlantCost * amount;
+                    if (prot)
+                        cost += tree.ProtCost * amount;
+
+                    if (!CheckBalance(player, cost))
+                    {
+                        player.ChatMessage($"<color=#ff3333>{Lang("Balance", player.UserIDString, cost)}</color>");
+                        return;
+                    }
+
+                    var item = CreateItem(saplingName, amount);
+                    if (item == null)
+                    {
+                        player.ChatMessage(Lang("Error", player.UserIDString));
+                        return;
+                    }
+
+                    BalanceTake(player, cost);
+
+                    player.GiveItem(item);
+
+                    sb.Append($"{Lang("GetSapling", player.UserIDString, amount, saplingName)}");
+
+                    player.ChatMessage(sb.ToString());
+                }
             }
-
-            BalanceTake(player, tree.Cost);
-
-            player.GiveItem(item);
-
-            player.ChatMessage(Lang("Given", player.UserIDString, tree.Amount, tree.Name));
         }
+
         #endregion
 
-        #region Core
-        void PlantTree(BasePlayer player, GrowableEntity plant, string prefabName)
-        {
-            BaseEntity entity = GameManager.server.CreateEntity(prefabName, plant.transform.position, Quaternion.identity);
-            if (entity == null)
-            {
-                return;
-            }
 
-            entity.OwnerID = player.userID;
+        #region Core
+
+        private void PlantTree(BasePlayer player, GrowableEntity plant, string prefabName, bool prot = false)
+        {
+            var entity = GameManager.server.CreateEntity(prefabName, plant.transform.position, Quaternion.identity);
+            if (entity == null) return;
+
+            entity.OwnerID = prot ? player.userID : 0;
             entity.Spawn();
 
             plant?.Kill();
@@ -256,55 +525,29 @@ namespace Oxide.Plugins
             player.ChatMessage(Lang("Planted", player.UserIDString));
         }
 
-        bool CheckBalance(BasePlayer player, int cost)
+        private bool CheckBalance(BasePlayer player, int cost)
         {
-            if (_config.UseServerRewards && ServerRewards?.Call<int>("CheckPoints", player.userID) >= cost)
-            {
-                return true;
-            }
-
-            if (_config.UseEconomics && Economics?.Call<double>("Balance", player.userID) >= (double) cost)
-            {
-                return true;
-            }
-
-            if (_config.UseCurrency && player.inventory.GetAmount(_config.CurrencyItemID) >= cost)
-            {
-                return true;
-            }
+            if (player.inventory.GetAmount(-932201673) >= cost) return true;
 
             return false;
         }
 
-        void BalanceTake(BasePlayer player, int cost)
+        private void BalanceTake(BasePlayer player, int cost)
         {
-            if (_config.UseServerRewards)
-            {
-                ServerRewards?.Call<object>("TakePoints", player.userID, cost, null);
-            }
-
-            if (_config.UseEconomics)
-            {
-                Economics?.Call<object>("Withdraw", player.userID, (double) cost);
-            }
-
-            if (_config.UseCurrency)
-            {
-                player.inventory.Take(new List<Item>(), _config.CurrencyItemID, cost);
-            }
+            player.inventory.Take(new List<Item>(), -932201673, cost);
         }
 
-        Item CreateItem(string treeType, int treeAmount = 1)
+        private Item CreateItem(string treeType, int treeAmount = 1)
         {
-            Item item = ItemManager.CreateByName("clone.hemp", treeAmount);
+            var item = ItemManager.CreateByName("clone.hemp", treeAmount);
             item.name = treeType;
             item.info.stackable = 1;
             return item;
         }
 
-        void RefundItem(BasePlayer player, string treeType)
+        private void RefundItem(BasePlayer player, string treeType)
         {
-            Item refundItem = CreateItem(treeType);
+            var refundItem = CreateItem(treeType);
 
             if (refundItem == null)
             {
@@ -315,29 +558,114 @@ namespace Oxide.Plugins
             player.GiveItem(refundItem);
         }
 
-        bool IsOwner(ulong userID, ulong ownerID)
+        private bool IsTree(string prefab)
         {
-            return userID == ownerID;
-        }
-
-        bool IsTree(string prefab)
-        {
-            if (prefab.Contains("oak_") 
-            || prefab.Contains("birch_") 
-            || prefab.Contains("douglas_") 
-            || prefab.Contains("swamp_") 
-            || prefab.Contains("palm_") 
-            || prefab.Contains("pine_"))
-            {
+            if (prefab.Contains("oak_")
+                || prefab.Contains("birch_")
+                || prefab.Contains("douglas_")
+                || prefab.Contains("beech_")
+                || prefab.Contains("swamp_")
+                || prefab.Contains("palm_")
+                || prefab.Contains("pine_")
+                || prefab.Contains("cactus-"))
                 return true;
-            }
 
             return false;
         }
+
         #endregion
 
+
         #region Helpers
-        string Lang(string key, string id = null, params object[] args) => string.Format(lang.GetMessage(key, this, id), args);
+
+        private string Lang(string key, string id = null, params object[] args)
+        {
+            return string.Format(lang.GetMessage(key, this, id), args);
+        }
+
+        private List<string> GetAvailableEnvironments()
+        {
+            var environments = new List<string>();
+            foreach (var tree in _config.Trees)
+                if (environments.FirstOrDefault(env =>
+                    string.Equals(env, tree.Env, StringComparison.InvariantCultureIgnoreCase)) == null)
+                    environments.Add(tree.Env);
+
+            return environments;
+        }
+
+        private TreeConfig[] GetTreesForEnvironment(string environment)
+        {
+            var trees = new List<TreeConfig>();
+            foreach (var tree in _config.Trees.Where(tree =>
+                string.Equals(tree.Env, environment, StringComparison.InvariantCultureIgnoreCase))) trees.Add(tree);
+
+            return trees.ToArray();
+        }
+
+        private List<string> GetTreeNamesFromArray(TreeConfig[] treeArray)
+        {
+            var treeNames = new List<string>();
+            foreach (var tree in treeArray) treeNames.Add(tree.Type + " " + tree.Variant);
+
+            return treeNames;
+        }
+
+        private List<string> GetTreeVariantsFromArray(TreeConfig[] treeArray)
+        {
+            var variants = new List<string>();
+            foreach (var tree in treeArray) variants.Add(tree.Variant);
+
+            return variants;
+        }
+
+        private bool IsValidEnvironment(string environment)
+        {
+            if (GetAvailableEnvironments().FirstOrDefault(env =>
+                string.Equals(env, environment, StringComparison.InvariantCultureIgnoreCase)) == null)
+                return false;
+
+            return true;
+        }
+
+        private bool IsValidTree(string environment, string tree)
+        {
+            if (!IsValidEnvironment(environment))
+                return false;
+
+            if (GetTreesForEnvironment(environment).FirstOrDefault(tre =>
+                string.Equals(tre.Type, tree, StringComparison.InvariantCultureIgnoreCase)) == null)
+                return false;
+
+            return true;
+        }
+
+        private bool IsValidVariant(string environment, string tree, string variant)
+        {
+            if (!IsValidEnvironment(environment))
+                return false;
+
+            if (!IsValidTree(environment, tree))
+                return false;
+
+            if (GetTreesForEnvironment(environment).FirstOrDefault(tre =>
+                string.Equals(tre.Type, tree, StringComparison.InvariantCultureIgnoreCase) &&
+                string.Equals(tre.Variant, variant, StringComparison.InvariantCultureIgnoreCase)) == null)
+                return false;
+
+            return true;
+        }
+
+        private string UniFormat(string input)
+        {
+            switch (input)
+            {
+                case null: throw new ArgumentNullException(nameof(input));
+                case "": throw new ArgumentException($"{nameof(input)} cannot be empty", nameof(input));
+                default: return input.First().ToString().ToUpper() + input.Substring(1).ToLower();
+            }
+        }
+
         #endregion
     }
 }
