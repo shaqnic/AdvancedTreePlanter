@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Advanced Tree Planter", "shaqnic", "1.1.3")]
+    [Info("Advanced Tree Planter", "shaqnic", "1.1.4")]
     [Description("Allow planting specific and protected trees. Adaption of Bazz3l's \"Tree Planter\" plugin.")]
     /*
      * Adaption of Bazz3l's "Tree Planter" plugin (https://umod.org/plugins/tree-planter)
@@ -259,7 +259,8 @@ namespace Oxide.Plugins
                 {"InvalidVariant", "Tree variant '{0}' is not valid for tree '{1}' and environment '{2}'."},
                 {"InvalidAmount", "Amount must be a number greater than 0."},
                 {"GetSapling", "You get {0}x sapling of '{1}'."},
-                {"ProtectedTree", "This tree seems to be protected."}
+                {"ProtectedTree", "This tree seems to be protected."},
+                {"ProtectionDisabled", "Tree protection is not enabled."}
             }, this);
         }
 
@@ -356,8 +357,11 @@ namespace Oxide.Plugins
             {
                 sb.Append("<color=#66ff99>" + Lang("CmdTree", player.UserIDString) + "</color>\n");
                 sb.Append("/tree <environment> <tree> <variant> <color=#cccccc><amount></color>\n\n");
-                sb.Append("<color=#66ff99>" + Lang("CmdTreeProt", player.UserIDString) + "</color>\n");
-                sb.Append("/tree <environment> <tree> <variant> <amount> prot\n\n");
+                if (_config.AllowProtectedTrees)
+                {
+                    sb.Append("<color=#66ff99>" + Lang("CmdTreeProt", player.UserIDString) + "</color>\n");
+                    sb.Append("/tree <environment> <tree> <variant> <amount> prot\n\n");
+                }
                 sb.Append("<color=#66ff99>" + Lang("CmdTreeList", player.UserIDString) + "</color>\n");
                 sb.Append("/tree <environment>\n\n");
                 sb.Append("<color=#66ff99>" + Lang("EnvList", player.UserIDString) + "</color>\n");
@@ -435,7 +439,6 @@ namespace Oxide.Plugins
                         {
                             sb.Append($"/tree {args[0]} {args[1]} {args[2]} <color=#ff3333>{args[3]}</color>\n\n");
                             sb.Append($"<color=#ff3333>{Lang("InvalidAmount", player.UserIDString)}</color>");
-
                             player.ChatMessage(sb.ToString());
                             return;
                         }
@@ -443,7 +446,15 @@ namespace Oxide.Plugins
 
                     var prot = false;
                     if (args.Length > 4)
+                    {
+                        if (!_config.AllowProtectedTrees)
+                        {
+                            sb.Append("<color=#ff3333>" + Lang("ProtectionDisabled", player.UserIDString) + "</color>");
+                            player.ChatMessage(sb.ToString());
+                            return;
+                        }
                         prot = args[4].ToLower() == "prot" ? true : false;
+                    }
 
                     var nameBuilder = new StringBuilder();
                     nameBuilder.Append(
