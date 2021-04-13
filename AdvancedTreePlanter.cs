@@ -288,14 +288,6 @@ namespace Oxide.Plugins
 
             if (ent == null || !IsTree(ent.ShortPrefabName)) return null;
 
-            var debugger = new StringBuilder();
-            debugger.Append("ent.OwnerID: " + ent.OwnerID);
-            debugger.Append("\n_config.AllowProtectedTrees: " + _config.AllowProtectedTrees);
-            debugger.Append("\nent.OwnerID != 0UL: " + (ent.OwnerID != 0UL));
-            debugger.Append("\n!permission.UserHasPermission(player.UserIDString, PermChop): " +
-                            !permission.UserHasPermission(player.UserIDString, PermChop));
-            player.ChatMessage(debugger.ToString());
-
             if (_config.AllowProtectedTrees && ent.OwnerID != 0UL &&
                 !permission.UserHasPermission(player.UserIDString, PermChop))
             {
