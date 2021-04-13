@@ -202,14 +202,6 @@ namespace Oxide.Plugins
             public bool AllowProtectedTrees;
             public bool RequireBuildPermission;
             public List<TreeConfig> Trees;
-
-            //public TreeConfig FindItemByName(string type, string variant, string env)
-            //{
-            //    return Trees.Find(x =>
-            //        string.Equals(x.Type, type, StringComparison.CurrentCultureIgnoreCase) &&
-            //        string.Equals(x.Variant, variant, StringComparison.CurrentCultureIgnoreCase) &&
-            //        string.Equals(x.Env, env, StringComparison.CurrentCultureIgnoreCase));
-            //}
         }
 
         public class TreeConfig
