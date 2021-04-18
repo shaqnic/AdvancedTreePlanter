@@ -254,7 +254,7 @@ namespace Oxide.Plugins
                 {"EnvTreeList", "List of trees for environment '{0}':"},
                 {"EnvNotFound", "Environment '{0}' is not available."},
                 {"VariantMissing", "No variant for this tree type was chosen."},
-                {"VarList", "List of available variants."},
+                {"AvailableVariants", "List of available variants"},
                 {"InvalidTree", "Tree type '{0}' is not valid for environment '{1}'."},
                 {"InvalidVariant", "Tree variant '{0}' is not valid for tree '{1}' and environment '{2}'."},
                 {"InvalidAmount", "Amount must be a number greater than 0."},
