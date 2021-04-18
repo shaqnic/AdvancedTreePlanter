@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Advanced Tree Planter", "shaqnic", "1.1.4")]
+    [Info("Advanced Tree Planter", "shaqnic", "1.1.5")]
     [Description("Allow planting specific and protected trees. Adaption of Bazz3l's \"Tree Planter\" plugin.")]
     /*
      * Adaption of Bazz3l's "Tree Planter" plugin (https://umod.org/plugins/tree-planter)
@@ -260,7 +260,10 @@ namespace Oxide.Plugins
                 {"InvalidAmount", "Amount must be a number greater than 0."},
                 {"GetSapling", "You get {0}x sapling of '{1}'."},
                 {"ProtectedTree", "This tree seems to be protected."},
-                {"ProtectionDisabled", "Tree protection is not enabled."}
+                {"ProtectionDisabled", "Tree protection is not enabled."},
+                {"BracketExplanation", "In brackets"},
+                {"PricePerSapling", "price per sapling"},
+                {"PricePerProtSapling", "price per protected sapling"}
             }, this);
         }
 
@@ -386,7 +389,22 @@ namespace Oxide.Plugins
             {
                 sb.Append($"/tree {environment} <tree> <variant> <color=#cccccc><amount></color>\n\n");
                 sb.Append("<color=#66ff99>" + Lang("EnvTreeList", player.UserIDString, environment) + "</color>\n");
-                sb.Append(string.Join(", ", GetTreeNamesFromArray(GetTreesForEnvironment(environment))));
+                var envTrees = new List<string>();
+                foreach (var envTree in GetTreesForEnvironment(environment))
+                {
+                    var sbTree = new StringBuilder();
+                    sbTree.Append(envTree.Type + " " + envTree.Variant + " <color=#cccccc>(");
+                    sbTree.Append(envTree.PlantCost);
+                    if (_config.AllowProtectedTrees)
+                        sbTree.Append("/" + (envTree.PlantCost + envTree.ProtCost));
+                    sbTree.Append(")</color>");
+                    envTrees.Add(sbTree.ToString());
+                }
+                sb.Append(string.Join(", ", envTrees) + "\n\n");
+                sb.Append("<color=#dddddd>" + Lang("BracketExplanation", player.UserIDString) + ": " + Lang("PricePerSapling", player.UserIDString));
+                if (_config.AllowProtectedTrees)
+                    sb.Append(" / " + Lang("PricePerProtSapling", player.UserIDString));
+                sb.Append("</color>");
 
                 player.ChatMessage(sb.ToString());
             }
@@ -412,7 +430,25 @@ namespace Oxide.Plugins
                         $"/tree {args[0]} {args[1]} <color=#ff3333><variant></color> <color=#cccccc><amount></color>\n\n");
                     sb.Append($"<color=#ff3333>{Lang("VariantMissing", player.UserIDString)}</color>\n\n");
                     sb.Append($"<color=#66ff99>{Lang("AvailableVariants", player.UserIDString)}:</color>\n");
-                    sb.Append(string.Join(", ", treeVariants));
+                    var variants = new List<string>();
+                    foreach (var envTree in GetTreesForEnvironment(environment))
+                    {
+                        if (string.Equals(envTree.Type, args[1], StringComparison.InvariantCultureIgnoreCase))
+                        {
+                            var sbVariant = new StringBuilder();
+                            sbVariant.Append(envTree.Variant + " <color=#cccccc>(");
+                            sbVariant.Append(envTree.PlantCost);
+                            if (_config.AllowProtectedTrees)
+                                sbVariant.Append("/" + (envTree.PlantCost + envTree.ProtCost));
+                            sbVariant.Append(")</color>");
+                            variants.Add(sbVariant.ToString());
+                        }
+                    }
+                    sb.Append(string.Join(", ", variants) + "\n\n");
+                    sb.Append("<color=#dddddd>" + Lang("BracketExplanation", player.UserIDString) + ": " + Lang("PricePerSapling", player.UserIDString));
+                    if (_config.AllowProtectedTrees)
+                        sb.Append(" / " + Lang("PricePerProtSapling", player.UserIDString));
+                    sb.Append("</color>");
 
                     player.ChatMessage(sb.ToString());
                 }
