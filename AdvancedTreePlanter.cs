@@ -365,6 +365,7 @@ namespace Oxide.Plugins
                     sb.Append("<color=#66ff99>" + Lang("CmdTreeProt", player.UserIDString) + "</color>\n");
                     sb.Append("/tree <environment> <tree> <variant> <amount> prot\n\n");
                 }
+
                 sb.Append("<color=#66ff99>" + Lang("CmdTreeList", player.UserIDString) + "</color>\n");
                 sb.Append("/tree <environment>\n\n");
                 sb.Append("<color=#66ff99>" + Lang("EnvList", player.UserIDString) + "</color>\n");
@@ -400,8 +401,10 @@ namespace Oxide.Plugins
                     sbTree.Append(")</color>");
                     envTrees.Add(sbTree.ToString());
                 }
+
                 sb.Append(string.Join(", ", envTrees) + "\n\n");
-                sb.Append("<color=#dddddd>" + Lang("BracketExplanation", player.UserIDString) + ": " + Lang("PricePerSapling", player.UserIDString));
+                sb.Append("<color=#dddddd>" + Lang("BracketExplanation", player.UserIDString) + ": " +
+                          Lang("PricePerSapling", player.UserIDString));
                 if (_config.AllowProtectedTrees)
                     sb.Append(" / " + Lang("PricePerProtSapling", player.UserIDString));
                 sb.Append("</color>");
@@ -432,7 +435,6 @@ namespace Oxide.Plugins
                     sb.Append($"<color=#66ff99>{Lang("AvailableVariants", player.UserIDString)}:</color>\n");
                     var variants = new List<string>();
                     foreach (var envTree in GetTreesForEnvironment(environment))
-                    {
                         if (string.Equals(envTree.Type, args[1], StringComparison.InvariantCultureIgnoreCase))
                         {
                             var sbVariant = new StringBuilder();
@@ -443,9 +445,10 @@ namespace Oxide.Plugins
                             sbVariant.Append(")</color>");
                             variants.Add(sbVariant.ToString());
                         }
-                    }
+
                     sb.Append(string.Join(", ", variants) + "\n\n");
-                    sb.Append("<color=#dddddd>" + Lang("BracketExplanation", player.UserIDString) + ": " + Lang("PricePerSapling", player.UserIDString));
+                    sb.Append("<color=#dddddd>" + Lang("BracketExplanation", player.UserIDString) + ": " +
+                              Lang("PricePerSapling", player.UserIDString));
                     if (_config.AllowProtectedTrees)
                         sb.Append(" / " + Lang("PricePerProtSapling", player.UserIDString));
                     sb.Append("</color>");
@@ -489,6 +492,7 @@ namespace Oxide.Plugins
                             player.ChatMessage(sb.ToString());
                             return;
                         }
+
                         prot = args[4].ToLower() == "prot" ? true : false;
                     }
 
