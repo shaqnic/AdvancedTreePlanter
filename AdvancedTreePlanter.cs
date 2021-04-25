@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Advanced Tree Planter", "shaqnic", "1.1.5")]
+    [Info("Advanced Tree Planter", "shaqnic", "1.1.6")]
     [Description("Allow planting specific and protected trees. Adaption of Bazz3l's \"Tree Planter\" plugin.")]
     /*
      * Adaption of Bazz3l's "Tree Planter" plugin (https://umod.org/plugins/tree-planter)
@@ -284,7 +284,7 @@ namespace Oxide.Plugins
 
             if (ent == null || !IsTree(ent.ShortPrefabName)) return null;
 
-            if (_config.AllowProtectedTrees && ent.OwnerID != 0UL &&
+            if (_config.AllowProtectedTrees && ent.OwnerID != 0UL && ent.OwnerID != player.userID &&
                 !permission.UserHasPermission(player.UserIDString, PermChop))
             {
                 info.damageTypes.ScaleAll(0.0f);
