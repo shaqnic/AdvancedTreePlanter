@@ -1,5 +1,6 @@
 ﻿
 # About
+
 This plugin is an adaption of Bazz3l's Tree Planter plugin for Rust (https://umod.org/plugins/tree-planter) and includes some extended features like:
 
  - give the ability to plant any type of tree
@@ -21,7 +22,9 @@ Permissions that are used:
 - `advancedtreeplanter.chopprotected`
 
 # Currency
+
 In contrast to the original Tree Planter plugin by Bazz3l, the Economics plugin is currently not supported. Instead scrap in the player's inventory is used as currency.
+
 # Commands
 
  - `/tree <environment> <type> <variant> <optional: amount>` - get a sapling for the selected tree
@@ -29,6 +32,7 @@ In contrast to the original Tree Planter plugin by Bazz3l, the Economics plugin 
  - `/tree <environment>` - list all available trees and variants for the selected environment
 
 # Configuration
+
 The settings and options can be configured in the `AdvancedTreePlanter` file under the `config` directory. The use of a JSON editor or validation site such as [jsonlint.com](https://jsonlint.com/) is recommended to avoid formatting issues and syntax errors.
 
     {
@@ -51,9 +55,10 @@ The settings and options can be configured in the `AdvancedTreePlanter` file und
     }
 
 ## Configuration explanations
-`AllowProtectedTrees` - trees protected from chopping can be placed, if enabled; if disabled: no tree is longer protected until option is re-enabled
-`GatherSaplingChance` - the chance to get a sapling, when chopping a tree
-`MaxSaplingGather` - maximum amount of saplings a player can get when chopping a tree
-`MinSaplingGather` - minimum amount of saplings a player can get when chopping a tree
-`RandomizeSaplingGather` - saplings gathered from chopping will be for a random variant of type (e.g. oak a, oak b, ...), if enabled
-`RequireBuildPermission` - player must have building privilege for planting trees, if enabled
+
+- `AllowProtectedTrees` - trees protected from chopping can be placed, if enabled; if disabled: no tree is longer protected until option is re-enabled
+- `GatherSaplingChance` - the chance to get a sapling, when chopping a tree
+- `MaxSaplingGather` - maximum amount of saplings a player can get when chopping a tree
+- `MinSaplingGather` - minimum amount of saplings a player can get when chopping a tree
+- `RandomizeSaplingGather` - saplings gathered from chopping will be for a random variant of type (e.g. oak a, oak b, ...), if enabled
+- `RequireBuildPermission` - player must have building privilege for planting trees, if enabled
