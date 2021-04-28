@@ -1,7 +1,9 @@
-﻿# About
+﻿
+# About
 This plugin is an adaption of Bazz3l's Tree Planter plugin for Rust (https://umod.org/plugins/tree-planter) and includes some extended features like:
 
  - give the ability to plant any type of tree
+ - give the ability to gather saplings from chopped trees (require permission to gather)
  - configure whether building permissions are required
  - configure whether protected trees can be planted (require permission to chop)
 
@@ -13,8 +15,10 @@ This plugin uses Oxide's permission system.
  - To revoke a permission, use `oxide.revoke <user or group> <name or steam id> <permission>`.
 
 Permissions that are used:
-- `advancedtreeplanter.use`
-- `advancedtreeplanter.chop`
+- `advancedtreeplanter.buysapling`
+- `advancedtreeplanter.gathersapling`
+- `advancedtreeplanter.plantsapling`
+- `advancedtreeplanter.chopprotected`
 
 # Currency
 In contrast to the original Tree Planter plugin by Bazz3l, the Economics plugin is currently not supported. Instead scrap in the player's inventory is used as currency.
@@ -29,7 +33,10 @@ The settings and options can be configured in the `AdvancedTreePlanter` file und
 
     {
       "AllowProtectedTrees": true,
-      "RequireBuildPermission": false,
+      "GatherSaplingChance": 0.33,
+      "MaxSaplingGather": 2,
+      "MinSaplingGather": 1,
+      "RequireBuildPermission": true,
       "Trees": [
         {
           "Env": "Temperate",
