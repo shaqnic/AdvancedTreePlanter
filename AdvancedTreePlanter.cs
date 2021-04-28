@@ -4,10 +4,11 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using UnityEngine;
+using Random = Oxide.Core.Random;
 
 namespace Oxide.Plugins
 {
-    [Info("Advanced Tree Planter", "shaqnic", "1.1.6")]
+    [Info("Advanced Tree Planter", "shaqnic", "1.2.0")]
     [Description("Allow planting specific and protected trees. Adaption of Bazz3l's \"Tree Planter\" plugin.")]
     /*
      * Adaption of Bazz3l's "Tree Planter" plugin (https://umod.org/plugins/tree-planter)
@@ -20,8 +21,10 @@ namespace Oxide.Plugins
     {
         #region Fields
 
-        private const string PermUse = "advancedtreeplanter.use";
-        private const string PermChop = "advancedtreeplanter.chop";
+        private const string PermBuy = "advancedtreeplanter.buysapling";
+        private const string PermGather = "advancedtreeplanter.gathersapling";
+        private const string PermPlant = "advancedtreeplanter.plantsapling";
+        private const string PermChop = "advancedtreeplanter.chopprotected";
         private ConfigData _config;
 
         #endregion
@@ -35,6 +38,9 @@ namespace Oxide.Plugins
             {
                 RequireBuildPermission = true,
                 AllowProtectedTrees = true,
+                GatherSaplingChance = 0.33f,
+                MinSaplingGather = 1,
+                MaxSaplingGather = 2,
                 Trees = new List<TreeConfig>
                 {
                     /* TEMPERATE ENVIRONMENT */
@@ -200,6 +206,9 @@ namespace Oxide.Plugins
         public class ConfigData
         {
             public bool AllowProtectedTrees;
+            public float GatherSaplingChance;
+            public int MaxSaplingGather;
+            public int MinSaplingGather;
             public bool RequireBuildPermission;
             public List<TreeConfig> Trees;
         }
@@ -240,6 +249,7 @@ namespace Oxide.Plugins
             lang.RegisterMessages(new Dictionary<string, string>
             {
                 {"NoPermission", "No permission."},
+                {"SaplingDied", "Your sapling just died. Seems like you don't know how things work."},
                 {"Balance", "You cannot afford this ({0} Scrap required)."},
                 {"Given", "You received a sapling for '{0}'."},
                 {"MissingAuth", "You must have building privilege."},
@@ -269,7 +279,9 @@ namespace Oxide.Plugins
 
         private void OnServerInitialized()
         {
-            permission.RegisterPermission(PermUse, this);
+            permission.RegisterPermission(PermBuy, this);
+            permission.RegisterPermission(PermGather, this);
+            permission.RegisterPermission(PermPlant, this);
             permission.RegisterPermission(PermChop, this);
         }
 
@@ -294,19 +306,36 @@ namespace Oxide.Plugins
                 return false;
             }
 
+            NextTick(() =>
+            {
+                if (ent.Health() < 0)
+                    OnTreeChopped(ent, player);
+            });
+
             return null;
         }
 
         private void OnEntityBuilt(Planner plan, GameObject seed)
         {
             var player = plan.GetOwnerPlayer();
-            if (player == null || !permission.UserHasPermission(player.UserIDString, PermUse)) return;
+            if (player == null) return;
 
             var plant = seed.GetComponent<GrowableEntity>();
             if (plant == null) return;
 
             var item = player.GetActiveItem();
             if (item == null) return;
+
+            if (!permission.UserHasPermission(player.UserIDString, PermPlant))
+            {
+                NextTick(() =>
+                {
+                    plant?.Kill();
+                    player.ChatMessage(Lang("SaplingDied", player.UserIDString));
+                });
+
+                return;
+            }
 
             var pattern = @"([a-zA-Z]*)\s([a-zA-Z]*),\sVariant\s([a-zA-Z0-9\-]*)";
             var attributes = Regex.Match(item.name, pattern).Groups;
@@ -344,10 +373,26 @@ namespace Oxide.Plugins
             });
         }
 
+        private void OnTreeChopped(BaseEntity treeEntity, BasePlayer player)
+        {
+            var treeConfig = _config.Trees.FirstOrDefault(e => e.Prefab == treeEntity.PrefabName);
+
+            if (!permission.UserHasPermission(player.UserIDString, PermGather))
+                return;
+
+            if (Random.Range(0, 1000) <= _config.GatherSaplingChance * 1000)
+            {
+                var item = CreateItem(BuildItemName(treeConfig),
+                    Random.Range(_config.MinSaplingGather, _config.MaxSaplingGather + 1));
+                if (item != null)
+                    player.GiveItem(item);
+            }
+        }
+
         [ChatCommand("tree")]
         private void TreeCommand(BasePlayer player, string cmd, string[] args)
         {
-            if (!permission.UserHasPermission(player.UserIDString, PermUse))
+            if (!permission.UserHasPermission(player.UserIDString, PermBuy))
             {
                 player.ChatMessage(Lang("NoPermission", player.UserIDString));
                 return;
@@ -496,13 +541,6 @@ namespace Oxide.Plugins
                         prot = args[4].ToLower() == "prot" ? true : false;
                     }
 
-                    var nameBuilder = new StringBuilder();
-                    nameBuilder.Append(
-                        $"{UniFormat(args[0])} {UniFormat(args[1])}, Variant {UniFormat(args[2])}");
-                    if (prot)
-                        nameBuilder.Append(" (protected)");
-                    var saplingName = nameBuilder.ToString();
-
                     var tree = _config.Trees.FirstOrDefault(tre =>
                         string.Equals(tre.Env, args[0], StringComparison.InvariantCultureIgnoreCase) &&
                         string.Equals(tre.Type, args[1], StringComparison.InvariantCultureIgnoreCase) &&
@@ -524,6 +562,7 @@ namespace Oxide.Plugins
                         return;
                     }
 
+                    var saplingName = BuildItemName(tree, prot);
                     var item = CreateItem(saplingName, amount);
                     if (item == null)
                     {
@@ -699,6 +738,16 @@ namespace Oxide.Plugins
                 case "": throw new ArgumentException($"{nameof(input)} cannot be empty", nameof(input));
                 default: return input.First().ToString().ToUpper() + input.Substring(1).ToLower();
             }
+        }
+
+        private string BuildItemName(TreeConfig tree, bool prot = false)
+        {
+            var nameBuilder = new StringBuilder();
+            nameBuilder.Append($"{UniFormat(tree.Env)} {UniFormat(tree.Type)}, Variant {UniFormat(tree.Variant)}");
+            if (prot)
+                nameBuilder.Append(" (protected)");
+
+            return nameBuilder.ToString();
         }
 
         #endregion
