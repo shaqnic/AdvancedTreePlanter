@@ -8,7 +8,7 @@ using Random = Oxide.Core.Random;
 
 namespace Oxide.Plugins
 {
-    [Info("Advanced Tree Planter", "shaqnic", "1.2.0")]
+    [Info("Advanced Tree Planter", "shaqnic", "1.2.1")]
     [Description("Allow planting specific and protected trees. Adaption of Bazz3l's \"Tree Planter\" plugin.")]
     /*
      * Adaption of Bazz3l's "Tree Planter" plugin (https://umod.org/plugins/tree-planter)
@@ -38,9 +38,10 @@ namespace Oxide.Plugins
             {
                 RequireBuildPermission = true,
                 AllowProtectedTrees = true,
-                GatherSaplingChance = 0.33f,
+                GatherSaplingChance = 0.25f,
                 MinSaplingGather = 1,
                 MaxSaplingGather = 2,
+                RandomizeSaplingGather = true,
                 Trees = new List<TreeConfig>
                 {
                     /* TEMPERATE ENVIRONMENT */
@@ -209,6 +210,7 @@ namespace Oxide.Plugins
             public float GatherSaplingChance;
             public int MaxSaplingGather;
             public int MinSaplingGather;
+            public bool RandomizeSaplingGather;
             public bool RequireBuildPermission;
             public List<TreeConfig> Trees;
         }
@@ -377,15 +379,28 @@ namespace Oxide.Plugins
         {
             var treeConfig = _config.Trees.FirstOrDefault(e => e.Prefab == treeEntity.PrefabName);
 
+            if (treeConfig == null) return;
+
             if (!permission.UserHasPermission(player.UserIDString, PermGather))
                 return;
 
             if (Random.Range(0, 1000) <= _config.GatherSaplingChance * 1000)
             {
-                var item = CreateItem(BuildItemName(treeConfig),
-                    Random.Range(_config.MinSaplingGather, _config.MaxSaplingGather + 1));
-                if (item != null)
-                    player.GiveItem(item);
+                var gatherAmount = Random.Range(_config.MinSaplingGather, _config.MaxSaplingGather + 1);
+                for (var i = 0; i < gatherAmount; i++)
+                {
+                    if (_config.RandomizeSaplingGather)
+                    {
+                        var treesForEnv =
+                            _config.Trees.FindAll(e => e.Env == treeConfig.Env && e.Type == treeConfig.Type);
+                        treeConfig = treesForEnv.ElementAt(Random.Range(0, treesForEnv.Count() - 1));
+                    }
+
+                    var item = CreateItem(BuildItemName(treeConfig));
+
+                    if (item != null)
+                        player.GiveItem(item);
+                }
             }
         }
 
@@ -675,14 +690,6 @@ namespace Oxide.Plugins
                 string.Equals(tree.Env, environment, StringComparison.InvariantCultureIgnoreCase))) trees.Add(tree);
 
             return trees.ToArray();
-        }
-
-        private List<string> GetTreeNamesFromArray(TreeConfig[] treeArray)
-        {
-            var treeNames = new List<string>();
-            foreach (var tree in treeArray) treeNames.Add(tree.Type + " " + tree.Variant);
-
-            return treeNames;
         }
 
         private List<string> GetTreeVariantsFromArray(TreeConfig[] treeArray)

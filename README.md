@@ -36,6 +36,7 @@ The settings and options can be configured in the `AdvancedTreePlanter` file und
       "GatherSaplingChance": 0.33,
       "MaxSaplingGather": 2,
       "MinSaplingGather": 1,
+      "RandomizeSaplingGather": true,
       "RequireBuildPermission": true,
       "Trees": [
         {
@@ -49,3 +50,10 @@ The settings and options can be configured in the `AdvancedTreePlanter` file und
       ]
     }
 
+## Configuration explanations
+`AllowProtectedTrees` - trees protected from chopping can be placed, if enabled; if disabled: no tree is longer protected until option is re-enabled
+`GatherSaplingChance` - the chance to get a sapling, when chopping a tree
+`MaxSaplingGather` - maximum amount of saplings a player can get when chopping a tree
+`MinSaplingGather` - minimum amount of saplings a player can get when chopping a tree
+`RandomizeSaplingGather` - saplings gathered from chopping will be for a random variant of type (e.g. oak a, oak b, ...), if enabled
+`RequireBuildPermission` - player must have building privilege for planting trees, if enabled
