@@ -8,7 +8,7 @@ using Random = Oxide.Core.Random;
 
 namespace Oxide.Plugins
 {
-    [Info("Advanced Tree Planter", "shaqnic", "1.2.1")]
+    [Info("Advanced Tree Planter", "shaqnic", "1.2.2")]
     [Description("Allow planting specific and protected trees. Adaption of Bazz3l's \"Tree Planter\" plugin.")]
     /*
      * Adaption of Bazz3l's "Tree Planter" plugin (https://umod.org/plugins/tree-planter)
@@ -165,6 +165,15 @@ namespace Oxide.Plugins
                     new TreeConfig("Tree", "F",
                         "assets/bundled/prefabs/autospawn/resource/swamp-trees/swamp_tree_f.prefab", "Swamp"),
                     /* ARID ENVIRONMENT */
+                    new TreeConfig("Palm", "Short-a",
+                        "assets/bundled/prefabs/autospawn/resource/v2_arid_forest/palm_tree_short_a_entity.prefab",
+                        "Arid"),
+                    new TreeConfig("Palm", "Short-b",
+                        "assets/bundled/prefabs/autospawn/resource/v2_arid_forest/palm_tree_short_b_entity.prefab",
+                        "Arid"),
+                    new TreeConfig("Palm", "Short-c",
+                        "assets/bundled/prefabs/autospawn/resource/v2_arid_forest/palm_tree_short_c_entity.prefab",
+                        "Arid"),
                     new TreeConfig("Palm", "Med-a",
                         "assets/bundled/prefabs/autospawn/resource/v2_arid_forest/palm_tree_med_a_entity.prefab",
                         "Arid"),
