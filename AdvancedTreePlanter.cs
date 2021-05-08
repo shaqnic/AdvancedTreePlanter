@@ -8,7 +8,7 @@ using Random = Oxide.Core.Random;
 
 namespace Oxide.Plugins
 {
-    [Info("Advanced Tree Planter", "shaqnic", "1.3.0")]
+    [Info("Advanced Tree Planter", "shaqnic", "1.3.1")]
     [Description("Allow planting specific and protected trees. Adaption of Bazz3l's \"Tree Planter\" plugin.")]
     /*
      * Adaption of Bazz3l's "Tree Planter" plugin (https://umod.org/plugins/tree-planter)
@@ -250,11 +250,18 @@ namespace Oxide.Plugins
                 return false;
             }
 
-            NextTick(() =>
+            try
             {
-                if (ent.Health() < 0)
-                    OnTreeChopped(ent, player);
-            });
+                NextTick(() =>
+                {
+                    if (ent.Health() < 0)
+                        OnTreeChopped(ent, player);
+                });
+            }
+            catch (Exception e)
+            {
+                Puts(e.ToString());
+            }
 
             return null;
         }
@@ -270,6 +277,8 @@ namespace Oxide.Plugins
             var item = player.GetActiveItem();
             if (item == null) return;
 
+            if (item.name == null) return;
+
             if (!permission.UserHasPermission(player.UserIDString, PermPlant))
             {
                 NextTick(() =>
@@ -281,40 +290,50 @@ namespace Oxide.Plugins
                 return;
             }
 
-            var pattern = @"([a-zA-Z]*)\s([a-zA-Z]*),\sVariant\s([a-zA-Z0-9\-]*)";
-            var attributes = Regex.Match(item.name, pattern).Groups;
-
-            var tree = _config.Trees.FirstOrDefault(tre =>
-                tre.Env == attributes[1].Value && tre.Type == attributes[2].Value &&
-                tre.Variant == attributes[3].Value);
-            if (tree == null) return;
-
-            var prot = item.name.Contains("protected") ? true : false;
-
-            NextTick(() =>
+            try
             {
-                if (plant.GetParentEntity() is PlanterBox)
-                {
-                    RefundItem(player, item.name);
+                var pattern = @"([a-zA-Z]*)\s([a-zA-Z]*),\sVariant\s([a-zA-Z0-9\-]*)";
+                var attributes = Regex.Match(item.name, pattern).Groups;
 
-                    plant?.Kill();
-
-                    player.ChatMessage(Lang("Planter", player.UserIDString));
+                if (attributes.Count == 0)
                     return;
-                }
 
-                if (_config.RequireBuildPermission && !player.IsBuildingAuthed())
+                var tree = _config.Trees.FirstOrDefault(tre =>
+                    tre.Env == attributes[1].Value && tre.Type == attributes[2].Value &&
+                    tre.Variant == attributes[3].Value);
+                if (tree == null) return;
+
+                var prot = item.name.Contains("protected") ? true : false;
+
+                NextTick(() =>
                 {
-                    RefundItem(player, item.name);
+                    if (plant.GetParentEntity() is PlanterBox)
+                    {
+                        RefundItem(player, item.name);
 
-                    plant?.Kill();
+                        plant?.Kill();
 
-                    player.ChatMessage(Lang("MissingAuth", player.UserIDString));
-                    return;
-                }
+                        player.ChatMessage(Lang("Planter", player.UserIDString));
+                        return;
+                    }
 
-                PlantTree(player, plant, tree.Prefab, prot);
-            });
+                    if (_config.RequireBuildPermission && !player.IsBuildingAuthed())
+                    {
+                        RefundItem(player, item.name);
+
+                        plant?.Kill();
+
+                        player.ChatMessage(Lang("MissingAuth", player.UserIDString));
+                        return;
+                    }
+
+                    PlantTree(player, plant, tree.Prefab, prot);
+                });
+            }
+            catch (Exception e)
+            {
+                Puts(e.ToString());
+            }
         }
 
         private void OnTreeChopped(BaseEntity treeEntity, BasePlayer player)
