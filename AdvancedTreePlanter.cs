@@ -8,7 +8,7 @@ using Random = Oxide.Core.Random;
 
 namespace Oxide.Plugins
 {
-    [Info("Advanced Tree Planter", "shaqnic", "1.3.1")]
+    [Info("Advanced Tree Planter", "shaqnic", "1.3.2")]
     [Description("Allow planting specific and protected trees. Adaption of Bazz3l's \"Tree Planter\" plugin.")]
     /*
      * Adaption of Bazz3l's "Tree Planter" plugin (https://umod.org/plugins/tree-planter)
@@ -236,22 +236,23 @@ namespace Oxide.Plugins
 
         private object OnMeleeAttack(BasePlayer player, HitInfo info)
         {
-            var ent = info?.HitEntity;
-
-            if (ent == null || !IsTree(ent.ShortPrefabName)) return null;
-
-            if (_config.AllowProtectedTrees && ent.OwnerID != 0UL && ent.OwnerID != player.userID &&
-                !permission.UserHasPermission(player.UserIDString, PermChop))
-            {
-                info.damageTypes.ScaleAll(0.0f);
-
-                player.ChatMessage(Lang("ProtectedTree", player.UserIDString));
-
-                return false;
-            }
-
             try
             {
+                var ent = info?.HitEntity;
+
+                if (ent == null || !IsTree(ent.ShortPrefabName)) return null;
+
+                if (_config.AllowProtectedTrees && ent.OwnerID != 0UL &&
+                    !permission.UserHasPermission(player.UserIDString, PermChop))
+                {
+                    info.damageTypes.ScaleAll(0.0f);
+
+                    player.ChatMessage(Lang("ProtectedTree", player.UserIDString));
+
+                    return false;
+                }
+
+
                 NextTick(() =>
                 {
                     if (ent.Health() < 0)
@@ -268,30 +269,20 @@ namespace Oxide.Plugins
 
         private void OnEntityBuilt(Planner plan, GameObject seed)
         {
-            var player = plan.GetOwnerPlayer();
-            if (player == null) return;
-
-            var plant = seed.GetComponent<GrowableEntity>();
-            if (plant == null) return;
-
-            var item = player.GetActiveItem();
-            if (item == null) return;
-
-            if (item.name == null) return;
-
-            if (!permission.UserHasPermission(player.UserIDString, PermPlant))
-            {
-                NextTick(() =>
-                {
-                    plant?.Kill();
-                    player.ChatMessage(Lang("SaplingDied", player.UserIDString));
-                });
-
-                return;
-            }
-
             try
             {
+                var player = plan.GetOwnerPlayer();
+                if (player == null) return;
+
+                var plant = seed.GetComponent<GrowableEntity>();
+                if (plant == null) return;
+
+                var item = player.GetActiveItem();
+                if (item == null) return;
+
+                if (item.name == null) return;
+
+
                 var pattern = @"([a-zA-Z]*)\s([a-zA-Z]*),\sVariant\s([a-zA-Z0-9\-]*)";
                 var attributes = Regex.Match(item.name, pattern).Groups;
 
@@ -302,6 +293,17 @@ namespace Oxide.Plugins
                     tre.Env == attributes[1].Value && tre.Type == attributes[2].Value &&
                     tre.Variant == attributes[3].Value);
                 if (tree == null) return;
+
+                if (!permission.UserHasPermission(player.UserIDString, PermPlant))
+                {
+                    NextTick(() =>
+                    {
+                        plant?.Kill();
+                        player.ChatMessage(Lang("SaplingDied", player.UserIDString));
+                    });
+
+                    return;
+                }
 
                 var prot = item.name.Contains("protected") ? true : false;
 
@@ -338,30 +340,37 @@ namespace Oxide.Plugins
 
         private void OnTreeChopped(BaseEntity treeEntity, BasePlayer player)
         {
-            var treeConfig = _config.Trees.FirstOrDefault(e => e.Prefab == treeEntity.PrefabName);
-
-            if (treeConfig == null) return;
-
-            if (!permission.UserHasPermission(player.UserIDString, PermGather))
-                return;
-
-            if (Random.Range(0, 1000) <= _config.GatherSaplingChance * 1000)
+            try
             {
-                var gatherAmount = Random.Range(_config.MinSaplingGather, _config.MaxSaplingGather + 1);
-                for (var i = 0; i < gatherAmount; i++)
+                var treeConfig = _config.Trees.FirstOrDefault(e => e.Prefab == treeEntity.PrefabName);
+
+                if (treeConfig == null) return;
+
+                if (!permission.UserHasPermission(player.UserIDString, PermGather))
+                    return;
+
+                if (Random.Range(0, 1000) <= _config.GatherSaplingChance * 1000)
                 {
-                    if (_config.RandomizeSaplingGather)
+                    var gatherAmount = Random.Range(_config.MinSaplingGather, _config.MaxSaplingGather + 1);
+                    for (var i = 0; i < gatherAmount; i++)
                     {
-                        var treesForEnv =
-                            _config.Trees.FindAll(e => e.Env == treeConfig.Env && e.Type == treeConfig.Type);
-                        treeConfig = treesForEnv.ElementAt(Random.Range(0, treesForEnv.Count() - 1));
+                        if (_config.RandomizeSaplingGather)
+                        {
+                            var treesForEnv =
+                                _config.Trees.FindAll(e => e.Env == treeConfig.Env && e.Type == treeConfig.Type);
+                            treeConfig = treesForEnv.ElementAt(Random.Range(0, treesForEnv.Count() - 1));
+                        }
+
+                        var item = CreateItem(BuildItemName(treeConfig));
+
+                        if (item != null)
+                            player.GiveItem(item);
                     }
-
-                    var item = CreateItem(BuildItemName(treeConfig));
-
-                    if (item != null)
-                        player.GiveItem(item);
                 }
+            }
+            catch (Exception e)
+            {
+                Puts(e.ToString());
             }
         }
 
@@ -374,100 +383,59 @@ namespace Oxide.Plugins
                 return;
             }
 
-            var sb = new StringBuilder();
-            sb.Append("<color=#6699ff>Advanced Tree Planter</color>\n\n");
-
-            if (args.Length == 0 || args.Length > 5)
+            try
             {
-                sb.Append("<color=#66ff99>" + Lang("CmdTree", player.UserIDString) + "</color>\n");
-                sb.Append("/tree <environment> <tree> <variant> <color=#cccccc><amount></color>\n\n");
-                if (_config.AllowProtectedTrees)
+
+                var sb = new StringBuilder();
+                sb.Append("<color=#6699ff>Advanced Tree Planter</color>\n\n");
+
+                if (args.Length == 0 || args.Length > 5)
                 {
-                    sb.Append("<color=#66ff99>" + Lang("CmdTreeProt", player.UserIDString) + "</color>\n");
-                    sb.Append("/tree <environment> <tree> <variant> <amount> prot\n\n");
-                }
-
-                sb.Append("<color=#66ff99>" + Lang("CmdTreeList", player.UserIDString) + "</color>\n");
-                sb.Append("/tree <environment>\n\n");
-                sb.Append("<color=#66ff99>" + Lang("EnvList", player.UserIDString) + "</color>\n");
-                sb.Append(string.Join(", ", GetAvailableEnvironments()));
-
-                player.ChatMessage(sb.ToString());
-                return;
-            }
-
-            var environment = GetAvailableEnvironments().FirstOrDefault(env =>
-                string.Equals(env, args[0], StringComparison.InvariantCultureIgnoreCase));
-            if (environment == null)
-            {
-                sb.Append($"/tree <color=#ff3333>{args[0]}</color>\n\n");
-                sb.Append("<color=#ff3333>" + Lang("EnvNotFound", player.UserIDString, args[0]) + "</color>");
-
-                player.ChatMessage(sb.ToString());
-                return;
-            }
-
-            if (args.Length == 1)
-            {
-                sb.Append($"/tree {environment} <tree> <variant> <color=#cccccc><amount></color>\n\n");
-                sb.Append("<color=#66ff99>" + Lang("EnvTreeList", player.UserIDString, environment) + "</color>\n");
-                var envTrees = new List<string>();
-                foreach (var envTree in GetTreesForEnvironment(environment))
-                {
-                    var sbTree = new StringBuilder();
-                    sbTree.Append(envTree.Type + " " + envTree.Variant + " <color=#cccccc>(");
-                    sbTree.Append(envTree.PlantCost);
+                    sb.Append("<color=#66ff99>" + Lang("CmdTree", player.UserIDString) + "</color>\n");
+                    sb.Append("/tree <environment> <tree> <variant> <color=#cccccc><amount></color>\n\n");
                     if (_config.AllowProtectedTrees)
-                        sbTree.Append("/" + (envTree.PlantCost + envTree.ProtCost));
-                    sbTree.Append(")</color>");
-                    envTrees.Add(sbTree.ToString());
-                }
+                    {
+                        sb.Append("<color=#66ff99>" + Lang("CmdTreeProt", player.UserIDString) + "</color>\n");
+                        sb.Append("/tree <environment> <tree> <variant> <amount> prot\n\n");
+                    }
 
-                sb.Append(string.Join(", ", envTrees) + "\n\n");
-                sb.Append("<color=#dddddd>" + Lang("BracketExplanation", player.UserIDString) + ": " +
-                          Lang("PricePerSapling", player.UserIDString));
-                if (_config.AllowProtectedTrees)
-                    sb.Append(" / " + Lang("PricePerProtSapling", player.UserIDString));
-                sb.Append("</color>");
+                    sb.Append("<color=#66ff99>" + Lang("CmdTreeList", player.UserIDString) + "</color>\n");
+                    sb.Append("/tree <environment>\n\n");
+                    sb.Append("<color=#66ff99>" + Lang("EnvList", player.UserIDString) + "</color>\n");
+                    sb.Append(string.Join(", ", GetAvailableEnvironments()));
 
-                player.ChatMessage(sb.ToString());
-            }
-            else
-            {
-                if (!IsValidTree(args[0], args[1]))
-                {
-                    var args2 = args.Length > 2 ? args[2] : "<variant>";
-                    var args3 = args.Length > 3 ? args[3] : "<amount>";
-                    sb.Append(
-                        $"/tree {args[0]} <color=#ff3333>{args[1]}</color> {args2} <color=#cccccc>{args3}</color>\n\n");
-                    sb.Append($"<color=#ff3333>{Lang("InvalidTree", player.UserIDString, args[1], args[0])}</color>");
                     player.ChatMessage(sb.ToString());
                     return;
                 }
 
-                var treeVariants = GetTreeVariantsFromArray(GetTreesForEnvironment(environment).Where(tree =>
-                    string.Equals(tree.Type, args[1], StringComparison.InvariantCultureIgnoreCase)).ToArray());
-
-                if (args.Length == 2)
+                var environment = GetAvailableEnvironments().FirstOrDefault(env =>
+                    string.Equals(env, args[0], StringComparison.InvariantCultureIgnoreCase));
+                if (environment == null)
                 {
-                    sb.Append(
-                        $"/tree {args[0]} {args[1]} <color=#ff3333><variant></color> <color=#cccccc><amount></color>\n\n");
-                    sb.Append($"<color=#ff3333>{Lang("VariantMissing", player.UserIDString)}</color>\n\n");
-                    sb.Append($"<color=#66ff99>{Lang("AvailableVariants", player.UserIDString)}:</color>\n");
-                    var variants = new List<string>();
-                    foreach (var envTree in GetTreesForEnvironment(environment))
-                        if (string.Equals(envTree.Type, args[1], StringComparison.InvariantCultureIgnoreCase))
-                        {
-                            var sbVariant = new StringBuilder();
-                            sbVariant.Append(envTree.Variant + " <color=#cccccc>(");
-                            sbVariant.Append(envTree.PlantCost);
-                            if (_config.AllowProtectedTrees)
-                                sbVariant.Append("/" + (envTree.PlantCost + envTree.ProtCost));
-                            sbVariant.Append(")</color>");
-                            variants.Add(sbVariant.ToString());
-                        }
+                    sb.Append($"/tree <color=#ff3333>{args[0]}</color>\n\n");
+                    sb.Append("<color=#ff3333>" + Lang("EnvNotFound", player.UserIDString, args[0]) + "</color>");
 
-                    sb.Append(string.Join(", ", variants) + "\n\n");
+                    player.ChatMessage(sb.ToString());
+                    return;
+                }
+
+                if (args.Length == 1)
+                {
+                    sb.Append($"/tree {environment} <tree> <variant> <color=#cccccc><amount></color>\n\n");
+                    sb.Append("<color=#66ff99>" + Lang("EnvTreeList", player.UserIDString, environment) + "</color>\n");
+                    var envTrees = new List<string>();
+                    foreach (var envTree in GetTreesForEnvironment(environment))
+                    {
+                        var sbTree = new StringBuilder();
+                        sbTree.Append(envTree.Type + " " + envTree.Variant + " <color=#cccccc>(");
+                        sbTree.Append(envTree.PlantCost);
+                        if (_config.AllowProtectedTrees)
+                            sbTree.Append("/" + (envTree.PlantCost + envTree.ProtCost));
+                        sbTree.Append(")</color>");
+                        envTrees.Add(sbTree.ToString());
+                    }
+
+                    sb.Append(string.Join(", ", envTrees) + "\n\n");
                     sb.Append("<color=#dddddd>" + Lang("BracketExplanation", player.UserIDString) + ": " +
                               Lang("PricePerSapling", player.UserIDString));
                     if (_config.AllowProtectedTrees)
@@ -478,82 +446,133 @@ namespace Oxide.Plugins
                 }
                 else
                 {
-                    if (!IsValidVariant(args[0], args[1], args[2]))
+                    if (!IsValidTree(args[0], args[1]))
                     {
+                        var args2 = args.Length > 2 ? args[2] : "<variant>";
                         var args3 = args.Length > 3 ? args[3] : "<amount>";
                         sb.Append(
-                            $"/tree {args[0]} {args[1]} <color=#ff3333>{args[2]}</color> <color=#cccccc>{args3}</color>\n\n");
+                            $"/tree {args[0]} <color=#ff3333>{args[1]}</color> {args2} <color=#cccccc>{args3}</color>\n\n");
                         sb.Append(
-                            $"<color=#ff3333>{Lang("InvalidVariant", player.UserIDString, args[2], args[1], args[0])}</color>\n\n");
-                        sb.Append($"<color=#66ff99>{Lang("AvailableVariants", player.UserIDString)}:</color>\n");
-                        sb.Append(string.Join(", ", treeVariants));
+                            $"<color=#ff3333>{Lang("InvalidTree", player.UserIDString, args[1], args[0])}</color>");
                         player.ChatMessage(sb.ToString());
                         return;
                     }
 
-                    var amount = 1;
-                    if (args.Length > 3)
+                    var treeVariants = GetTreeVariantsFromArray(GetTreesForEnvironment(environment).Where(tree =>
+                        string.Equals(tree.Type, args[1], StringComparison.InvariantCultureIgnoreCase)).ToArray());
+
+                    if (args.Length == 2)
                     {
-                        var isNumeric = int.TryParse(args[3], out amount);
-                        if (!isNumeric || amount < 1)
+                        sb.Append(
+                            $"/tree {args[0]} {args[1]} <color=#ff3333><variant></color> <color=#cccccc><amount></color>\n\n");
+                        sb.Append($"<color=#ff3333>{Lang("VariantMissing", player.UserIDString)}</color>\n\n");
+                        sb.Append($"<color=#66ff99>{Lang("AvailableVariants", player.UserIDString)}:</color>\n");
+                        var variants = new List<string>();
+                        foreach (var envTree in GetTreesForEnvironment(environment))
+                            if (string.Equals(envTree.Type, args[1], StringComparison.InvariantCultureIgnoreCase))
+                            {
+                                var sbVariant = new StringBuilder();
+                                sbVariant.Append(envTree.Variant + " <color=#cccccc>(");
+                                sbVariant.Append(envTree.PlantCost);
+                                if (_config.AllowProtectedTrees)
+                                    sbVariant.Append("/" + (envTree.PlantCost + envTree.ProtCost));
+                                sbVariant.Append(")</color>");
+                                variants.Add(sbVariant.ToString());
+                            }
+
+                        sb.Append(string.Join(", ", variants) + "\n\n");
+                        sb.Append("<color=#dddddd>" + Lang("BracketExplanation", player.UserIDString) + ": " +
+                                  Lang("PricePerSapling", player.UserIDString));
+                        if (_config.AllowProtectedTrees)
+                            sb.Append(" / " + Lang("PricePerProtSapling", player.UserIDString));
+                        sb.Append("</color>");
+
+                        player.ChatMessage(sb.ToString());
+                    }
+                    else
+                    {
+                        if (!IsValidVariant(args[0], args[1], args[2]))
                         {
-                            sb.Append($"/tree {args[0]} {args[1]} {args[2]} <color=#ff3333>{args[3]}</color>\n\n");
-                            sb.Append($"<color=#ff3333>{Lang("InvalidAmount", player.UserIDString)}</color>");
+                            var args3 = args.Length > 3 ? args[3] : "<amount>";
+                            sb.Append(
+                                $"/tree {args[0]} {args[1]} <color=#ff3333>{args[2]}</color> <color=#cccccc>{args3}</color>\n\n");
+                            sb.Append(
+                                $"<color=#ff3333>{Lang("InvalidVariant", player.UserIDString, args[2], args[1], args[0])}</color>\n\n");
+                            sb.Append($"<color=#66ff99>{Lang("AvailableVariants", player.UserIDString)}:</color>\n");
+                            sb.Append(string.Join(", ", treeVariants));
                             player.ChatMessage(sb.ToString());
                             return;
                         }
-                    }
 
-                    var prot = false;
-                    if (args.Length > 4)
-                    {
-                        if (!_config.AllowProtectedTrees)
+                        var amount = 1;
+                        if (args.Length > 3)
                         {
-                            sb.Append("<color=#ff3333>" + Lang("ProtectionDisabled", player.UserIDString) + "</color>");
-                            player.ChatMessage(sb.ToString());
+                            var isNumeric = int.TryParse(args[3], out amount);
+                            if (!isNumeric || amount < 1)
+                            {
+                                sb.Append($"/tree {args[0]} {args[1]} {args[2]} <color=#ff3333>{args[3]}</color>\n\n");
+                                sb.Append($"<color=#ff3333>{Lang("InvalidAmount", player.UserIDString)}</color>");
+                                player.ChatMessage(sb.ToString());
+                                return;
+                            }
+                        }
+
+                        var prot = false;
+                        if (args.Length > 4)
+                        {
+                            if (!_config.AllowProtectedTrees)
+                            {
+                                sb.Append("<color=#ff3333>" + Lang("ProtectionDisabled", player.UserIDString) +
+                                          "</color>");
+                                player.ChatMessage(sb.ToString());
+                                return;
+                            }
+
+                            prot = args[4].ToLower() == "prot" ? true : false;
+                        }
+
+                        var tree = _config.Trees.FirstOrDefault(tre =>
+                            string.Equals(tre.Env, args[0], StringComparison.InvariantCultureIgnoreCase) &&
+                            string.Equals(tre.Type, args[1], StringComparison.InvariantCultureIgnoreCase) &&
+                            string.Equals(tre.Variant, args[2], StringComparison.InvariantCultureIgnoreCase));
+
+                        if (tree == null)
+                        {
+                            player.ChatMessage(Lang("Invalid", player.UserIDString));
                             return;
                         }
 
-                        prot = args[4].ToLower() == "prot" ? true : false;
+                        var cost = tree.PlantCost * amount;
+                        if (prot)
+                            cost += tree.ProtCost * amount;
+
+                        if (!CheckBalance(player, cost))
+                        {
+                            player.ChatMessage($"<color=#ff3333>{Lang("Balance", player.UserIDString, cost)}</color>");
+                            return;
+                        }
+
+                        var saplingName = BuildItemName(tree, prot);
+                        var item = CreateItem(saplingName, amount);
+                        if (item == null)
+                        {
+                            player.ChatMessage(Lang("Error", player.UserIDString));
+                            return;
+                        }
+
+                        BalanceTake(player, cost);
+
+                        player.GiveItem(item);
+
+                        sb.Append($"{Lang("GetSapling", player.UserIDString, amount, saplingName)}");
+
+                        player.ChatMessage(sb.ToString());
                     }
-
-                    var tree = _config.Trees.FirstOrDefault(tre =>
-                        string.Equals(tre.Env, args[0], StringComparison.InvariantCultureIgnoreCase) &&
-                        string.Equals(tre.Type, args[1], StringComparison.InvariantCultureIgnoreCase) &&
-                        string.Equals(tre.Variant, args[2], StringComparison.InvariantCultureIgnoreCase));
-
-                    if (tree == null)
-                    {
-                        player.ChatMessage(Lang("Invalid", player.UserIDString));
-                        return;
-                    }
-
-                    var cost = tree.PlantCost * amount;
-                    if (prot)
-                        cost += tree.ProtCost * amount;
-
-                    if (!CheckBalance(player, cost))
-                    {
-                        player.ChatMessage($"<color=#ff3333>{Lang("Balance", player.UserIDString, cost)}</color>");
-                        return;
-                    }
-
-                    var saplingName = BuildItemName(tree, prot);
-                    var item = CreateItem(saplingName, amount);
-                    if (item == null)
-                    {
-                        player.ChatMessage(Lang("Error", player.UserIDString));
-                        return;
-                    }
-
-                    BalanceTake(player, cost);
-
-                    player.GiveItem(item);
-
-                    sb.Append($"{Lang("GetSapling", player.UserIDString, amount, saplingName)}");
-
-                    player.ChatMessage(sb.ToString());
                 }
+            }
+            catch (Exception e)
+            {
+                Puts(e.ToString());
             }
         }
 
