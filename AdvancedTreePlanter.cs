@@ -242,7 +242,7 @@ namespace Oxide.Plugins
 
                 if (ent == null || !IsTree(ent.ShortPrefabName)) return null;
 
-                if (_config.AllowProtectedTrees && ent.OwnerID != 0UL &&
+                if (_config.AllowProtectedTrees && ent.OwnerID != 0UL && ent.OwnerID != player.userID &&
                     !permission.UserHasPermission(player.UserIDString, PermChop))
                 {
                     info.damageTypes.ScaleAll(0.0f);
