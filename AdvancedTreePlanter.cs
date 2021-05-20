@@ -602,16 +602,19 @@ namespace Oxide.Plugins
                         }
 
                         var saplingName = BuildItemName(tree, prot);
-                        var item = CreateItem(saplingName, amount);
-                        if (item == null)
+                        
+                        for (int i = 0; i < amount; i++)
                         {
-                            player.ChatMessage(Lang("Error", player.UserIDString));
-                            return;
+                            var item = CreateItem(saplingName, 1);
+                            if (item == null)
+                            {
+                                player.ChatMessage(Lang("Error", player.UserIDString));
+                                return;
+                            }
+                            player.GiveItem(item);
                         }
 
                         BalanceTake(player, cost);
-
-                        player.GiveItem(item);
 
                         sb.Append($"{Lang("GetSapling", player.UserIDString, amount, saplingName)}");
 
