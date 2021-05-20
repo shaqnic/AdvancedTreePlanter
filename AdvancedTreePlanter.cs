@@ -71,6 +71,7 @@ namespace Oxide.Plugins
 
                     new TreeConfig("Pine", "A", "assets/bundled/prefabs/autospawn/resource/v3_arctic_forestside/pine_a_snow.prefab", "Arctic"),
                     new TreeConfig("Pine", "B", "assets/bundled/prefabs/autospawn/resource/v3_arctic_forestside/pine_b snow.prefab", "Arctic"),
+                    new TreeConfig("Pine", "C", "assets/bundled/prefabs/autospawn/resource/v3_arctic_forest/pine_c_snow.prefab", "Arctic"),
                     new TreeConfig("Pine", "D", "assets/bundled/prefabs/autospawn/resource/v3_arctic_forestside/pine_d_snow.prefab", "Arctic"),
 
                     new TreeConfig("Pine", "Dead-a", "assets/bundled/prefabs/autospawn/resource/v3_arctic_forest/pine_dead_snow_a.prefab", "Arctic"),
@@ -132,7 +133,6 @@ namespace Oxide.Plugins
                     new TreeConfig("Palm", "Small-b", "assets/bundled/prefabs/autospawn/resource/v3_arid_beachside/palm_tree_small_b_entity.prefab", "Arid"),
                     new TreeConfig("Palm", "Small-c", "assets/bundled/prefabs/autospawn/resource/v3_arid_beachside/palm_tree_small_c_entity.prefab", "Arid"),
                     new TreeConfig("Palm", "Med-a", "assets/bundled/prefabs/autospawn/resource/v3_arid_forest/palm_tree_med_a_entity.prefab", "Arid"),
-                    new TreeConfig("Palm", "Med-b", "assets/bundled/prefabs/autospawn/resource/v3_arid_forest/palm_tree_med_b_entity.prefab", "Arid"),
                     new TreeConfig("Palm", "Tall-a", "assets/bundled/prefabs/autospawn/resource/v3_arid_forest/palm_tree_tall_a_entity.prefab", "Arid"),
                     new TreeConfig("Palm", "Tall-b", "assets/bundled/prefabs/autospawn/resource/v3_arid_forest/palm_tree_tall_a_entity.prefab", "Arid"),
 
