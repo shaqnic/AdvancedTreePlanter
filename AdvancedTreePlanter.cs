@@ -8,7 +8,7 @@ using Random = Oxide.Core.Random;
 
 namespace Oxide.Plugins
 {
-    [Info("Advanced Tree Planter", "shaqnic", "1.3.2")]
+    [Info("Advanced Tree Planter", "shaqnic", "1.3.3")]
     [Description("Allow planting specific and protected trees. Adaption of Bazz3l's \"Tree Planter\" plugin.")]
     /*
      * Adaption of Bazz3l's "Tree Planter" plugin (https://umod.org/plugins/tree-planter)
@@ -26,6 +26,7 @@ namespace Oxide.Plugins
         private const string PermPlant = "advancedtreeplanter.plantsapling";
         private const string PermChop = "advancedtreeplanter.chopprotected";
         private ConfigData _config;
+        private List<TreeHitInfo> _hitInfos;
 
         #endregion
 
@@ -178,6 +179,13 @@ namespace Oxide.Plugins
             }
         }
 
+        public class TreeHitInfo
+        {
+            public ulong PlayerId;
+            public int TreeInstanceId;
+            public DateTime HitTime;
+        }
+
         #endregion
 
 
@@ -214,6 +222,7 @@ namespace Oxide.Plugins
                 {"InvalidAmount", "Amount must be a number greater than 0."},
                 {"GetSapling", "You get {0}x sapling of '{1}'."},
                 {"ProtectedTree", "This tree seems to be protected."},
+                {"ChopProtectedTree", "You are about to chop down a protected tree."},
                 {"ProtectionDisabled", "Tree protection is not enabled."},
                 {"BracketExplanation", "In brackets"},
                 {"PricePerSapling", "price per sapling"},
@@ -232,6 +241,7 @@ namespace Oxide.Plugins
         private void Init()
         {
             _config = Config.ReadObject<ConfigData>();
+            _hitInfos = new List<TreeHitInfo>();
         }
 
         private object OnMeleeAttack(BasePlayer player, HitInfo info)
@@ -242,16 +252,49 @@ namespace Oxide.Plugins
 
                 if (ent == null || !IsTree(ent.ShortPrefabName)) return null;
 
-                if (_config.AllowProtectedTrees && ent.OwnerID != 0UL && ent.OwnerID != player.userID &&
-                    !permission.UserHasPermission(player.UserIDString, PermChop))
+                if (_config.AllowProtectedTrees)
                 {
-                    info.damageTypes.ScaleAll(0.0f);
+                    if (ent.OwnerID != 0UL)
+                    {
+                        if (ent.OwnerID != player.userID &&
+                            !permission.UserHasPermission(player.UserIDString, PermChop))
+                        {
+                            info.damageTypes.ScaleAll(0.0f);
 
-                    player.ChatMessage(Lang("ProtectedTree", player.UserIDString));
+                            player.ChatMessage(Lang("ProtectedTree", player.UserIDString));
 
-                    return false;
+                            return false;
+                        }
+
+                        var currentHit = new TreeHitInfo()
+                        {
+                            PlayerId = player.userID,
+                            TreeInstanceId = ent.GetInstanceID(),
+                            HitTime = DateTime.Now
+                        };
+                        _hitInfos.Add(currentHit);
+
+                        var hitInfosForTree = _hitInfos.Where(e => e.TreeInstanceId == ent.GetInstanceID()).OrderByDescending(e => e.HitTime);
+
+                        var isFirstHit = hitInfosForTree.Count() == 1 ? true : false;
+
+                        var previousHitInfo = !isFirstHit ? hitInfosForTree.ElementAt(1) : currentHit;
+
+                        TimeSpan duration = DateTime.Now - previousHitInfo.HitTime;
+                        if (duration.Seconds >= 10 || isFirstHit)
+                        {
+                            player.ChatMessage(Lang("ChopProtectedTree", player.UserIDString));
+                        }
+
+                        foreach (var hitInfo in hitInfosForTree)
+                        {
+                            if (hitInfo != previousHitInfo)
+                            {
+                                _hitInfos.Remove(hitInfo);
+                            }
+                        }
+                    }
                 }
-
 
                 NextTick(() =>
                 {
@@ -342,6 +385,12 @@ namespace Oxide.Plugins
         {
             try
             {
+                var hitInfo = _hitInfos.FirstOrDefault(e => e.TreeInstanceId == treeEntity.GetInstanceID());
+                if (hitInfo != null)
+                {
+                    _hitInfos.Remove(hitInfo);
+                }
+
                 var treeConfig = _config.Trees.FirstOrDefault(e => e.Prefab == treeEntity.PrefabName);
 
                 if (treeConfig == null) return;
