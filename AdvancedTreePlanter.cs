@@ -288,7 +288,7 @@ namespace Oxide.Plugins
 
                         foreach (var hitInfo in hitInfosForTree)
                         {
-                            if (hitInfo != previousHitInfo)
+                            if (hitInfo != currentHit)
                             {
                                 _hitInfos.Remove(hitInfo);
                             }
